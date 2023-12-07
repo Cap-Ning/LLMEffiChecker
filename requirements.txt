@@ -379,7 +379,7 @@ tornado==6.1
 tqdm==4.55.1
 traitlets==5.1.1
 transducer==0.9
-transformers==4.16.2
+transformers==4.35.0
 tree-sitter==0.20.0
 tree-sitter-parsers==0.0.7
 tvm==1.0.0
