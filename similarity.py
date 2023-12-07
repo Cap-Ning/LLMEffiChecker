@@ -94,3 +94,4 @@ if __name__ == '__main__':
     parser.add_argument('--attack', default=1, type=int, help='attack type')
     args = parser.parse_args()
     main(args.attack)
+    
