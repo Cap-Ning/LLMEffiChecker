@@ -12,7 +12,7 @@ if not os.path.isdir('loop_res'):
     os.mkdir('loop_res')
 
 
-for attack_name in ['C', 'W']:
+for attack_name in ['C', 'W', 'S']:
     for method in ['latency', 'baseline']:
         final_table = []
         for data_name in MODEL_NAME_LIST:
