@@ -13,4 +13,4 @@
 #CUDA_VISIBLE_DEVICES=1 python generate_adv.py --data=1 --attack=0 --beam=5
 
 
-CUDA_VISIBLE_DEVICES=2 python measure_senstive.py --data=2 --attack=0
+CUDA_VISIBLE_DEVICES=2 python measure_senstive.py --data=2 --attack=7
