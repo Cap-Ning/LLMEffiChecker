@@ -136,3 +136,4 @@ class Seq2Seq(nn.Module):
             input = trg[t] if teacher_force else top1
 
         return outputs
+        
