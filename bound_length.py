@@ -58,3 +58,4 @@ if __name__ == '__main__':
     print()
     save_res = np.concatenate(save_res)
     np.savetxt('rate.csv', save_res, delimiter=',')
+
