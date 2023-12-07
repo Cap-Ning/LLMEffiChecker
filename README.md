@@ -1,6 +1,6 @@
-# NMTSloth
+# LLMEffiChecker
 
-*NMTSloth* is designed to generate test samples to test efficiency degradation of neural machine translation (NMT) systems.  Specifically, *NMTSloth* perturbs the seed sentences with three types of perturbations, and the perturbed inputs will consume more computational resources.
+*LLMEffiChecker* is designed to generate test samples to test efficiency degradation of Large Language Models (LLMs).  Specifically, *LLMEffiChecker* perturbs the seed sentences with three types of perturbations, and the perturbed inputs will consume more computational resources.
 
 
 
@@ -9,19 +9,18 @@
  <img src="https://github.com/SeekingDream/NMTSloth/blob/main/fig/overview.png" width="800" height="300" alt="Design Overview"/><br/>
 </div>    
 
-*NMTSloth* is based on two observation: (i) NMT systems' generation process are Markov processes, the number of decoder calls are undetermined (ii) existing NMT systems usually set a large threshold to avoid incomplete translation.
-With the above two observation, *NMTSloth* applies the gradient guided search to generate human unnoticeable perturbations.
-The design overview of *NMTSloth* is shown in the above figure. 
-At high level, *NMTSloth* includes three main steps: (i) find critical tokens, (ii) input muation, and (iii) efficiency degradation detection. For the detail desgin of each steps, we refer the readers to our paper.
+*LLMEffiChecker* is based on two observation: (i) LLMs' generation process are Markov processes, the number of decoder calls are undetermined (ii) existing LLMs usually set a large threshold to avoid incomplete generation.
+With the above two observation, *LLMEffiChecker* applies the gradient guided search and causal inference-based to generate human unnoticeable perturbations in white-box and black-box scenarios, respectively.
+The design overview of *LLMEffiChecker* is shown in the above figure. 
+At high level, *LLMEffiChecker* includes three main steps: (i) find critical tokens, (ii) input muation, and (iii) efficiency degradation detection. For the detail desgin of each steps, we refer the readers to our paper.
 
 
 ## File Structure
 * **src** -main source codes.
   * **./src/base_attack.py** - the wrapper calss for each testing methods.
-  * **./src/TranslateAPI.py** - the basical translation api files.
   * **./src/TransRepair.py** -the method of TransRepair
   * **./src/baseline_attack.py** -the implementation of Seq2Sick and NoisyError.
-  * **./src/my_attack.py** -the implementation of NMTSloth.
+  * **./src/my_attack.py** -the implementation of LLMEffiChecker.
 * **spider.py** -the script is used to study the NMT systemss' configurations in HuggingFace.
 * **generate_adv.py** -the script is used for generating test samples.
 * **measure_latency.py** -this script measures the latency/energy consumption of the generated adversarial examples.
