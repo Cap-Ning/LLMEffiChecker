@@ -4,6 +4,7 @@ from torchtext import datasets
 from utils import *
 
 
+
 def main():
     train_iter = Multi30k(split='train')
 
