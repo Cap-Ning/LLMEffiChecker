@@ -154,17 +154,24 @@ class SITAttack(SEAttack):
 			[target_sent_seg], properties={'ssplit.eolonly': 'true'}
 		)   # todo
 		origin_target_tree = [target_tree for (target_tree,) in origin_target_tree_Ls]
-		origin_target_tree = origin_target_tree[0]
+		adv_his = [(origin_source_sent[0], int(origin_pred_len), 0.0)]
+		try:
+			origin_target_tree = origin_target_tree[0]
+		except:
+			return False, adv_his
 		suspicious_issues = list()
 		new_source_sentsL = self.perturb(origin_source_sent)
 
-		adv_his = [(origin_source_sent[0], int(origin_pred_len), 0.0)]
+		
 
 		if len(new_source_sentsL) == 0:
 			return False, adv_his
 
 		new_target_sents_segL = list()
+		# try:
 		new_target_sentsL, new_target_lensL = self.get_trans_strings(new_source_sentsL)
+		# except:
+		# 	return False, adv_his
 		for new_target_sent in new_target_sentsL:
 
 			new_target_sent_seg = self.split_token(new_target_sent)
@@ -174,7 +181,7 @@ class SITAttack(SEAttack):
 				properties={'ssplit.eolonly': 'true'}
 			)
 		new_target_treesL = [target_tree for (target_tree,) in tmp_res]
-		assert (len(new_target_treesL) == len(new_source_sentsL))
+		# assert (len(new_target_treesL) == len(new_source_sentsL))
 		# print('new target sentences parsed')
 
 		for (new_source_sent, new_target_sent, new_target_len, new_target_tree) in \
