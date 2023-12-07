@@ -75,11 +75,28 @@ class NoisyAttack(BaselineAttack):
             st, ed = i * batch_size, min(i * batch_size + batch_size, len(new_strings))
             input_token = self.tokenizer(new_strings[st:ed], return_tensors="pt", padding=True).input_ids
             input_token = input_token.to(self.device)
-            trans_res = translate(
-                self.model, input_token,
-                early_stopping=False, num_beams=self.num_beams,
-                num_beam_groups=self.num_beam_groups, use_cache=True,
-                max_length=self.max_len
+            # trans_res = translate(
+            #     self.model, input_token,
+            #     early_stopping=False, num_beams=self.num_beams,
+            #     num_beam_groups=self.num_beam_groups, use_cache=True,
+            #     max_length=self.max_len
+            # )
+            trans_res = self.model.generate(
+                input_ids=input_token,
+                use_cache=True,
+                early_stopping=False,
+                num_beams=self.num_beams,
+                num_beam_groups=self.num_beam_groups,
+                # early_stopping=True, 
+                # use_cache=True,
+                # # num_beams=2,
+                # temperature=0.0,
+                # no_repeat_ngram_size=2, 
+                # repetition_penalty=2.0,
+                max_length=self.max_len,
+                # do_sample=True,
+                # length_penalty=-1,
+                output_scores=True, return_dict_in_generate=True,
             )
             new_trans_seqs = trans_res['sequences'].tolist()
             seqs.extend(new_trans_seqs)
@@ -94,7 +111,7 @@ class NoisyAttack(BaselineAttack):
 class Seq2SickAttack(BaselineAttack):
     def __init__(self, model, tokenizer, space_token, device, config):
         super(Seq2SickAttack, self).__init__(model, tokenizer, space_token, device, config)
-
+        
     @torch.no_grad()
     def select_apperance_best(self, new_strings, ori_trans: list, batch_size=100):
         seqs, scores = [], []
@@ -105,12 +122,22 @@ class Seq2SickAttack(BaselineAttack):
             st, ed = i * batch_size, min(i * batch_size + batch_size, len(new_strings))
             input_token = self.tokenizer(new_strings[st:ed], return_tensors="pt", padding=True).input_ids
             input_token = input_token.to(self.device)
-            trans_res = translate(
-                self.model, input_token,
-                early_stopping=False, num_beams=self.num_beams,
-                num_beam_groups=self.num_beam_groups, use_cache=True,
-                max_length=self.max_len
+            # trans_res = translate(
+            #     self.model, input_token,
+            #     early_stopping=False, num_beams=self.num_beams,
+            #     num_beam_groups=self.num_beam_groups, use_cache=True,
+            #     max_length=self.max_len
+            # )
+            trans_res = self.model.generate(
+                input_ids=input_token,
+                use_cache=True,
+                early_stopping=False,
+                num_beams=self.num_beams,
+                num_beam_groups=self.num_beam_groups,
+                max_length=self.max_len,
+                output_scores=True, return_dict_in_generate=True,
             )
+            
             new_trans_seqs = trans_res['sequences'].tolist()
             seqs.extend(new_trans_seqs)
             scores.extend([len(set(ori_trans) & set(s)) for s in new_trans_seqs])
@@ -133,19 +160,22 @@ class Seq2SickAttack(BaselineAttack):
         for it in pbar:
             loss = self.compute_loss(text)
             self.model.zero_grad()
-            loss.backward()
-            grad = self.embedding.grad
-            new_strings = self.token_replace_mutation(current_adv_text, grad, modify_pos)
+            try:
+                loss.backward()
+                grad = self.embedding.grad
+                new_strings = self.token_replace_mutation(current_adv_text, grad, modify_pos)
 
-            current_adv_text, current_score, current_len = self.select_apperance_best(new_strings, ori_trans)
+                current_adv_text, current_score, current_len = self.select_apperance_best(new_strings, ori_trans)
 
-            log_str = "%d, %d, %d, %.2f" % (it, len(new_strings), best_score, best_len / ori_len)
-            pbar.set_description(log_str)
-            if current_score < best_score:
-                best_adv_text = current_adv_text[0]
-                best_score = current_score
-            t2 = time.time()
-            adv_his.append((best_adv_text, best_len, t2 - t1))
+                log_str = "%d, %d, %d, %.2f" % (it, len(new_strings), best_score, best_len / ori_len)
+                pbar.set_description(log_str)
+                if current_score < best_score:
+                    best_adv_text = current_adv_text[0]
+                    best_score = current_score
+                t2 = time.time()
+                adv_his.append((best_adv_text, best_len, t2 - t1))
+            except:
+                 return False, adv_his
         return True, adv_his
 
     def compute_loss(self, text):
