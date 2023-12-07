@@ -10,12 +10,11 @@ from utils import *
 if not os.path.isdir('adv'):
     os.mkdir('adv')
 
-MAX_TESTING_NUM = 500
+MAX_TESTING_NUM = 1000
 
 
 def main(task_id, attack_id, beam):
     model_name = MODEL_NAME_LIST[task_id]
-    # device = torch.device(7)
     device = torch.device('cuda')
     model, tokenizer, space_token, dataset, src_lang, tgt_lang = load_model_dataset(model_name)
     print('load model %s successful' % model_name)
@@ -39,9 +38,12 @@ def main(task_id, attack_id, beam):
             continue
         if i >= MAX_TESTING_NUM:
             break
-        # src_text = 'See gewohnt comprehensive for more information. </s>' # 'dataset[21]
-        src_text = src_text.replace('\n', '')
-        is_success, adv_his = attack.run_attack([src_text])
+
+
+        if attack_id in [7,8,9]:
+            is_success, adv_his = attack.run_black_attack([src_text])
+        else:
+            is_success, adv_his = attack.run_attack([src_text])
         if not is_success:
             print('error')
         for tmp in adv_his:
@@ -54,18 +56,21 @@ def main(task_id, attack_id, beam):
             for _ in range(delta):
                 adv_his.append(adv_his[-1])
 
-        assert len(adv_his) == config['max_per'] + 1
-        results.append(adv_his)
-        torch.save(results, 'adv/' + task_name + '_' + str(beam) + '.adv')
+        assert len(adv_his) == config['max_per'] + 1 
+        if is_success:
+            results.append(adv_his)
+            # torch.save(results, 'adv/' + task_name + '_' + str(beam) + '.adv')
+            torch.save(results, 'effect/' + task_name + '_' + str(beam) + '.adv')
     t2 = datetime.datetime.now()
     print(t2 - t1)
-    torch.save(results, 'adv/' + task_name + '_' + str(beam) + '.adv')
+    # torch.save(results, 'adv/' + task_name + '_' + str(beam) + '.adv')
+    torch.save(results, 'effect/' + task_name + '_' + str(beam) + '.adv')
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Transformer')
-    parser.add_argument('--data', default=3, type=int, help='experiment subjects')
-    parser.add_argument('--attack', default=6, type=int, help='attack type')
+    parser.add_argument('--data', default=7, type=int, help='experiment subjects')
+    parser.add_argument('--attack', default=7, type=int, help='attack type')
     parser.add_argument('--beam', default=None, type=int, help='beam size')
     args = parser.parse_args()
     main(args.data, args.attack, args.beam)
