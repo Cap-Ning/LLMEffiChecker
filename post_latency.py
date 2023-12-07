@@ -9,10 +9,10 @@ if not os.path.isdir(save_dir):
     os.mkdir(save_dir)
 MAX_PER = 3
 
-for task_id in range(4):
+for task_id in range(9):
     model_name = MODEL_NAME_LIST[task_id]
     subj_res = []
-    for attack_id in [6]:
+    for attack_id in [10]:
         task_name = 'attack_type:' + str(attack_id) + '_model_type:' + str(task_id)
         latency_file = os.path.join(latency_dir, task_name + '.latency')
         res_list = torch.load(latency_file)
