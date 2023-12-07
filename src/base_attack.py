@@ -6,10 +6,64 @@ import numpy as np
 from copy import deepcopy
 from tqdm import tqdm
 import time
-
+import os
 from .TranslateAPI import translate
-
+from .GenerateAPI import mygenerate
+from undecorated import undecorated
+from types import MethodType
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    StoppingCriteria,
+    StoppingCriteriaList,
+)
 torch.autograd.set_detect_anomaly(True)
+
+# HUMANEVAL_EOS = ["\nclass", "\ndef", "\n#", "\n@", "\nprint", "\nif"]
+# NON_CODE_EOS = ["<|endoftext|>", "\n```", "\n</s>", "<|endofmask|>"]
+# EOS = HUMANEVAL_EOS + NON_CODE_EOS
+# # Adopted from https://github.com/huggingface/transformers/pull/14897
+# class EndOfFunctionCriteria(StoppingCriteria):
+#     def __init__(self, start_length, eos, tokenizer, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.start_length = start_length
+#         self.eos = eos
+#         self.tokenizer = tokenizer
+#         self.end_length = {}
+
+
+
+#     def __call__(self, input_ids, scores, **kwargs):
+#         """Returns true if all generated sequences contain any of the end-of-function strings."""
+#         decoded_generations = self.tokenizer.batch_decode(
+#             input_ids[:, self.start_length :]
+#         )
+#         done = []
+#         for index, decoded_generation in enumerate(decoded_generations):
+#             finished = any(
+#                 [stop_string in decoded_generation for stop_string in self.eos]
+#             )
+#             if (
+#                 finished and index not in self.end_length
+#             ):  # ensures first time we see it
+#                 for stop_string in self.eos:
+#                     if stop_string in decoded_generation:
+#                         self.end_length[index] = len(
+#                             input_ids[
+#                                 index,  # get length of actual generation
+#                                 self.start_length : -len(
+#                                     self.tokenizer.encode(
+#                                         stop_string,
+#                                         add_special_tokens=False,
+#                                         return_tensors="pt",
+#                                     )[0]
+#                                 ),
+#                             ]
+#                         )
+#             done.append(finished)
+#         return all(done)
+    
+
 
 
 class BaseAttack:
@@ -18,7 +72,7 @@ class BaseAttack:
         self.tokenizer = tokenizer
         self.device = device
         self.model = self.model.to(self.device)
-
+        # self.generation_config=generation_config
         self.embedding = self.model.get_input_embeddings().weight
         self.specical_token = self.tokenizer.all_special_tokens
         self.specical_id = self.tokenizer.all_special_ids
@@ -42,11 +96,22 @@ class BaseAttack:
     def compute_loss(self, x):
         pass
 
+    # def compute_seq_len(self, seq):
+    #     # return int(len(seq) - sum(seq.eq(self.pad_token_id)))
+    #     if seq[0].eq(self.pad_token_id):
+    #         return int(len(seq) - sum(seq.eq(self.pad_token_id)))
+    #     else:
+    #         return int(len(seq) - sum(seq.eq(self.pad_token_id))) - 1
+    
     def compute_seq_len(self, seq):
+        # return int(len(seq) - sum(seq.eq(self.pad_token_id)))
         if seq[0].eq(self.pad_token_id):
             return int(len(seq) - sum(seq.eq(self.pad_token_id)))
         else:
-            return int(len(seq) - sum(seq.eq(self.pad_token_id))) - 1
+            if(self.pad_token_id==self.eos_token_id):
+                return int(len(seq))-1
+            else:
+                return int(len(seq) - sum(seq.eq(self.pad_token_id))) - 1
 
     def get_prediction(self, text):
         def remove_pad(s):
@@ -54,17 +119,66 @@ class BaseAttack:
                 if tk == self.eos_token_id and i != 0:
                     return s[:i + 1]
             return s
+        #分词，加了个<eos>
         input_token = self.tokenizer(text, return_tensors="pt", padding=True).input_ids
         input_token = input_token.to(self.device)
-        out_token = translate(
-            self.model, input_token,
-            early_stopping=False, num_beams=self.num_beams,
-            num_beam_groups=self.num_beam_groups, use_cache=True,
-            max_length=self.max_len
+        # out_token = translate(
+        #     self.model, input_token,
+        #     early_stopping=False, num_beams=self.num_beams,
+        #     num_beam_groups=self.num_beam_groups, use_cache=True,
+        #     max_length=self.max_len
+        # )
+        # out_token = translate(
+        #     self.model, input_token,
+        #     early_stopping=False, num_beams=self.num_beams,
+        #     num_beam_groups=self.num_beam_groups, use_cache=True,
+        #     no_repeat_ngram_size=2,length_penalty=-1,
+        #     repetition_penalty=2.0,
+        #     max_length=self.max_len
+        # )
+        # generate_with_grad = undecorated(self.model.generate)
+        # self.model.generate_with_grad = MethodType(generate_with_grad, self.model)
+        # out_token = mygenerate(
+        #     self.model,
+        #     inputs=input_token,
+        #     # temperature=0.0,
+        #     # do_sample=True,
+        #     output_scores=True,
+        #     return_dict_in_generate=True,
+        # )
+
+        # scores = StoppingCriteriaList(
+        #     [
+        #         EndOfFunctionCriteria(
+        #             start_length=len(input_token[0]),
+        #             eos=EOS,
+        #             tokenizer=self.tokenizer,
+        #         )
+        #     ]
+        # )
+        out_token = self.model.generate(
+            input_ids=input_token,
+            # early_stopping=True,
+            # use_cache=True,
+            num_beams=self.num_beams,
+            num_beam_groups=self.num_beam_groups,
+            # temperature=0.0,
+            # # no_repeat_ngram_size=2,
+            # # repetition_penalty=2.0,
+            max_length=self.max_len,
+            # stopping_criteria=scores,
+            # # do_sample=True,
+            # length_penalty=-1,
+            output_scores=True, return_dict_in_generate=True,
         )
         seqs = out_token['sequences']
         seqs = [remove_pad(seq) for seq in seqs]
         out_scores = out_token['scores']
+        # 此时存在问题，gpt2，llama这些模型会保留原有的句子，所以导致pred_len与out_scors不一致
+        # if(len(input_token[0]) + len(out_scores) == len(seqs[0])):
+        #     seqs[0] = seqs[0][len(input_token[0]):]
+        seqs[0] = seqs[0][-len(out_scores):]
+        #the above is the add code for gpt2,llama
         pred_len = [self.compute_seq_len(seq) for seq in seqs]
         return pred_len, seqs, out_scores
 
@@ -108,7 +222,9 @@ class SEAttack(BaseAttack):
 
         self.port_dict = {
             'de': 9000,
-            'zh': 9001
+            'en': 9000,
+            'zh': 9001,
+            'pt': 9000
         }
 
     def split_token(self, origin_target_sent):
@@ -129,7 +245,8 @@ class MyAttack(BaseAttack):
     def leave_eos_loss(self, scores, pred_len):
         loss = []
         for i, s in enumerate(scores):
-            s[:, self.pad_token_id] = 1e-12
+            if self.pad_token_id != self.eos_token_id:
+                s[:, self.pad_token_id] = 1e-12
             eos_p = self.softmax(s)[:pred_len[i], self.eos_token_id]
             loss.append(self.bce_loss(eos_p, torch.zeros_like(eos_p)))
         return loss
@@ -137,8 +254,8 @@ class MyAttack(BaseAttack):
     def leave_eos_target_loss(self, scores, seqs, pred_len):
         loss = []
         for i, s in enumerate(scores):
-            # if self.pad_token_id != self.eos_token_id:
-            s[:, self.pad_token_id] = 1e-12
+            if self.pad_token_id != self.eos_token_id:
+                s[:, self.pad_token_id] = 1e-12
             softmax_v = self.softmax(s)
             eos_p = softmax_v[:pred_len[i], self.eos_token_id]
             target_p = torch.stack([softmax_v[iii, s] for iii, s in enumerate(seqs[i][1:])])
@@ -152,6 +269,15 @@ class MyAttack(BaseAttack):
             #     loss.append(self.bce_loss(pred, torch.zeros_like(pred)))
         return loss
 
+    def compute_best_len(self, seq):
+        # return int(len(seq) - sum(seq.eq(self.pad_token_id)))
+        if seq[0].eq(self.pad_token_id):
+            return int(len(seq) - sum(seq.eq(self.pad_token_id)))
+        else:
+            if(self.pad_token_id==self.eos_token_id):
+                return int(len(seq) - sum(seq.eq(self.pad_token_id)))
+            else:
+                return int(len(seq) - sum(seq.eq(self.pad_token_id))) - 1
     @torch.no_grad()
     def select_best(self, new_strings, batch_size=30):
         seqs = []
@@ -162,16 +288,85 @@ class MyAttack(BaseAttack):
             st, ed = i * batch_size, min(i * batch_size + batch_size, len(new_strings))
             input_token = self.tokenizer(new_strings[st:ed], return_tensors="pt", padding=True).input_ids
             input_token = input_token.to(self.device)
-            trans_res = translate(
-                self.model, input_token,
-                early_stopping=False, num_beams=self.num_beams,
-                num_beam_groups=self.num_beam_groups, use_cache=True,
-                max_length=self.max_len
+            # trans_res = translate(
+            #     self.model, input_token,
+            #     early_stopping=False, num_beams=self.num_beams,
+            #     num_beam_groups=self.num_beam_groups, use_cache=True,
+            #     max_length=self.max_len
+            # )
+
+            trans_res = self.model.generate(
+                input_token,
+                # early_stopping=True, 
+                # use_cache=True,
+                num_beams=self.num_beams,
+                num_beam_groups=self.num_beam_groups,
+                # temperature=0.0,
+                # no_repeat_ngram_size=2, 
+                # repetition_penalty=2.0,
+                max_length=self.max_len,
+                # num_return_sequences=30,
+                # do_sample=True,
+                # length_penalty=-1,
+                output_scores=True, return_dict_in_generate=True,
             )
             seqs.extend(trans_res['sequences'].tolist())
-        pred_len = np.array([self.compute_seq_len(torch.tensor(seq)) for seq in seqs])
-        assert len(new_strings) == len(pred_len)
+            length_output = np.array([self.compute_best_len(torch.tensor(seq)) for seq in seqs])
+            is_end = False
+            for element in length_output:
+                if element >= self.max_len - 1:
+                    is_end = True    
+                    break
+            if is_end == True:
+                break           
+        pred_len = np.array([self.compute_best_len(torch.tensor(seq)) for seq in seqs])
+        # assert len(new_strings) == len(pred_len)
         return new_strings[pred_len.argmax()], max(pred_len)
+    # @torch.no_grad()
+    # def select_best(self, new_strings, batch_size=30):
+    #     seqs = []
+    #     # batch_num = len(new_strings) // batch_size
+    #     # if batch_size * batch_num != len(new_strings):
+    #     #     batch_num += 1
+    #     for i in range(len(new_strings)):
+    #         # st, ed = i * batch_size, min(i * batch_size + batch_size, len(new_strings))
+    #         input_token = self.tokenizer(new_strings[i], return_tensors="pt", padding=True).input_ids
+    #         input_token = input_token.to(self.device)
+    #         # trans_res = translate(
+    #         #     self.model, input_token,
+    #         #     early_stopping=False, num_beams=self.num_beams,
+    #         #     num_beam_groups=self.num_beam_groups, use_cache=True,
+    #         #     max_length=self.max_len
+    #         # )
+
+    #         scores = StoppingCriteriaList(
+    #             [
+    #             EndOfFunctionCriteria(
+    #             start_length=len(input_token[0]),
+    #             eos=EOS,
+    #             tokenizer=self.tokenizer,
+    #                 )
+    #             ]
+    #         )
+    #         trans_res = self.model.generate(
+    #             input_token,
+    #             # early_stopping=True, 
+    #             # use_cache=True,
+    #             # # num_beams=2,
+    #             # temperature=0.0,
+    #             # no_repeat_ngram_size=2, 
+    #             # repetition_penalty=2.0,
+    #             stopping_criteria=scores,
+    #             max_length=self.max_len,
+    #             # num_return_sequences=30,
+    #             # do_sample=True,
+    #             # length_penalty=-1,
+    #             output_scores=True, return_dict_in_generate=True,
+    #         )
+    #         seqs.extend(trans_res['sequences'].tolist())
+    #     pred_len = np.array([self.compute_best_len(torch.tensor(seq)) for seq in seqs])
+    #     assert len(new_strings) == len(pred_len)
+    #     return new_strings[pred_len.argmax()], max(pred_len)
 
     def prepare_attack(self, text):
         ori_len = self.get_trans_len(text)[0]      # int
@@ -184,6 +379,31 @@ class MyAttack(BaseAttack):
 
     def mutation(self, current_adv_text, grad, modify_pos):
         raise NotImplementedError
+    
+    def run_black_attack(self, text):
+        assert len(text) == 1
+        current_adv_text = text[0]
+        current_len = 0
+        adv_his = [(current_adv_text, deepcopy(current_len), 0.0)]
+        modify_pos = []
+
+        pbar = tqdm(range(self.max_per))
+        t1 = time.time()
+        for it in pbar:
+            try:
+                grad = 0
+                new_strings = self.mutation(current_adv_text, grad, modify_pos)
+                if new_strings:
+                    current_adv_text, current_len = self.select_best(new_strings)
+                    log_str = "%d, %d, %.2f" % (it, len(new_strings), current_len)
+                    pbar.set_description(log_str)
+                    t2 = time.time()
+                    adv_his.append((current_adv_text, int(current_len), t2 - t1))
+                else:
+                    return False, adv_his
+            except:
+                 return False, adv_his
+        return True, adv_his
 
     def run_attack(self, text):
         assert len(text) == 1
