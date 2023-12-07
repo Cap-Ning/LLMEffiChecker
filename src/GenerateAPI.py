@@ -7,7 +7,7 @@ from transformers import BeamSearchScorer
 from transformers import LogitsProcessorList, StoppingCriteriaList
 from transformers import GenerationConfig
 
-def translate(
+def generate(
         module,
         generation_config: Optional[GenerationConfig] = None,
         inputs: Optional[torch.Tensor] = None,
