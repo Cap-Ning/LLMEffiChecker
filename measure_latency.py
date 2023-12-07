@@ -134,7 +134,8 @@ def measure_metric(model, tokenizer, adv_his, task_name):
 
 def main(data_id, attack_id):
     data_name = MODEL_NAME_LIST[data_id]
-    beam_size = BEAM_LIST[data_id]
+    # beam_size = BEAM_LIST[data_id]
+    beam_size = 1
     model, tokenizer, _, _, _ = load_model(data_name)
     task_name = 'attack_type:' + str(attack_id) + '_model_type:' + str(data_id)
 
@@ -146,18 +147,18 @@ def main(data_id, attack_id):
     for i, adv in tqdm(enumerate(adv_res)):
         if i >= MAX_NUM:
             return
-        try:
-            adv = adv[:MAX_PER + 1]
-            metric = measure_metric(model, tokenizer, adv, task_name)
-            final_res_data.append(metric)
-            torch.save(final_res_data, save_path)
-        except:
-            continue
+        # try:
+        adv = adv[:MAX_PER + 1]
+        metric = measure_metric(model, tokenizer, adv, task_name)
+        final_res_data.append(metric)
+        torch.save(final_res_data, save_path)
+        # except:
+        #     continue
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Measure Latency')
-    parser.add_argument('--data', default=1, type=int, help='experiment subjects')
+    parser.add_argument('--data', default=14, type=int, help='experiment subjects')
     parser.add_argument('--attack', default=0, type=int, help='attack type')
     args = parser.parse_args()
     main(args.data, args.attack)
