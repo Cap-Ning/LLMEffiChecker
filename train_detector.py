@@ -18,17 +18,17 @@ if not os.path.isdir(state_dir):
 
 device = torch.device(7)
 
-
 def collect_hidden(model_id, attack_id):
     def compute_length(s):
         return int(len(s) - sum(s.eq(tokenizer.pad_token_id)))
 
     data_name = MODEL_NAME_LIST[model_id]
+    BEAM_LIST = [4, 5, 1, 5, 1, 1, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1]
     beam_size = BEAM_LIST[model_id]
     model, tokenizer, _, _, _ = load_model(data_name)
     task_name = 'attack_type:' + str(attack_id) + '_model_type:' + str(model_id)
 
-    adv_res = torch.load('adv/' + task_name + '_' + str(beam_size) + '.adv')
+    adv_res = torch.load('effect/' + task_name + '_' + str(beam_size) + '.adv')
     encoder = model.get_encoder().to(device).eval()
 
     benign_list = [d[0][0] for d in adv_res]
@@ -54,6 +54,51 @@ def collect_hidden(model_id, attack_id):
     benign_h_list = torch.cat(benign_h_list)
     adv_h_list = torch.cat(adv_h_list)
     torch.save([(benign_h_list, adv_h_list), (benign_len, adv_len)], file_name)
+
+
+
+
+# def collect_hidden(model_id, attack_id):
+#     def compute_length(s):
+#         return int(len(s) - sum(s.eq(tokenizer.pad_token_id)))
+
+#     data_name = MODEL_NAME_LIST[model_id]
+#     BEAM_LIST = [4, 5, 1, 5, 1, 1, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+#     beam_size = BEAM_LIST[model_id]
+#     model, tokenizer, _, _, _ = load_model(data_name)
+#     task_name = 'attack_type:' + str(attack_id) + '_model_type:' + str(model_id)
+
+#     adv_res = torch.load('effect/' + task_name + '_' + str(beam_size) + '.adv')
+
+
+#     benign_list = [d[0][0] for d in adv_res]
+#     adv_list = [d[-1][0] for d in adv_res if d[-1][0] != d[0][0]]
+#     benign_h_list, adv_h_list = [], []
+#     benign_len, adv_len = [], []
+#     batch_size = 1
+#     iter_num = len(benign_list) // batch_size
+#     if iter_num * batch_size != len(benign_list):
+#         iter_num = iter_num + 1
+#     for _ in range(iter_num):  
+#         st, ed = batch_size * i, min(batch_size * (i + 1), len(benign_list))
+#         benign, adv = benign_list[st:ed], adv_list[st:ed]
+#         benign_tk = tokenizer(benign, return_tensors="pt", padding=True).input_ids.to(device)
+#         adv_tk = tokenizer(adv, return_tensors="pt", padding=True).input_ids.to(device)
+        
+
+#         with torch.no_grad():
+#             model.eval()
+#             benign_h = model(benign_tk).hidden_states[-1]
+#             adv_h = model(adv_tk).hidden_states[-1]
+
+#         benign_h_list.append(benign_h.detach().cpu())
+#         adv_h_list.append(adv_h.detach().cpu())
+#         benign_len.extend([compute_length(s) for s in benign_tk])
+#         adv_len.extend([compute_length(s) for s in adv_tk])
+#     file_name = os.path.join(state_dir, str(model_id) + '_' + str(attack_id) + '.hidden')
+#     benign_h_list = torch.cat(benign_h_list)
+#     adv_h_list = torch.cat(adv_h_list)
+#     torch.save([(benign_h_list, adv_h_list), (benign_len, adv_len)], file_name)
 
 
 def get_state(state, length, index):
@@ -103,6 +148,7 @@ def train_detector(model_id, attack_id):
     meter.end()
     latency = t2 - t1
     energy = handle_cpu_energy(meter.result.dram, meter.result.pkg)
+    energy = 0
 
     like_hod = m.predict_proba(test_feature)
     like_hod = like_hod[:, 1]
@@ -114,7 +160,7 @@ def train_detector(model_id, attack_id):
 
 def train_test_mix(model_id):
     train_x, train_y, test_x, test_y = [], [], [], []
-    for attack_id in [0, 1, 6]:
+    for attack_id in [7, 9, 8]:
         save_name = os.path.join(state_dir, str(model_id) + '_' + str(attack_id) + '.m')
         [_, (train_feature, train_label), (test_feature, test_label)] = torch.load(save_name)
         train_x.append(train_feature)
@@ -136,6 +182,7 @@ def train_test_mix(model_id):
     meter.end()
     latency = t2 - t1
     energy = handle_cpu_energy(meter.result.dram, meter.result.pkg)
+    energy = 0
 
     like_hod = m.predict_proba(test_x)
     like_hod = like_hod[:, 1]
@@ -146,14 +193,19 @@ def train_test_mix(model_id):
 
 
 if __name__ == '__main__':
-    pyRAPL.setup()
+    # for i in [0,1,2,3]:
+    #     acc_score, auc_score, latency_score, energy_score = [], [], [], []
+    #     for attack_id in [7,9,8]:
+    #         collect_hidden(i, attack_id)
+    # ===================================
+    # pyRAPL.setup()
     np.random.seed(101)
     final = []
     final_acc, final_auc, final_latency, final_energy = [], [], [], []
-    for i in [0, 3, 2]:
+    for i in [13]:
         acc_score, auc_score, latency_score, energy_score = [], [], [], []
-        for attack_id in [0, 1, 6]:
-            # collect_hidden(i, attack_id)
+        for attack_id in [7, 9, 8]:
+            collect_hidden(i, attack_id)
             acc, auc, l, e = train_detector(i, attack_id)
             print(i, attack_id, 'successful', acc, auc)
             acc_score.append(acc)
@@ -178,24 +230,6 @@ if __name__ == '__main__':
         tmp = np.concatenate([acc_score, auc_score, latency_score, energy_score])
         final.append(tmp)
 
-    # final_acc = np.concatenate(final_acc)
-    # final_auc = np.concatenate(final_auc)
-    # final_latency = np.concatenate(final_latency)
-    # final_energy = np.concatenate(final_energy)
     final = np.concatenate(final)
-    np.savetxt('res/detector.csv', final, delimiter=',')
+    np.savetxt('res/detector_13.csv', final, delimiter=',')
 
-
-    # print('---------------------------------')
-    # print('---------------------------------')
-    # for i in range(4):
-    #     for train_attack_id in [0, 1, 6]:
-    #         save_name = os.path.join(state_dir, str(i) + '_' + str(train_attack_id) + '.m')
-    #         [m, (_, _)] = torch.load(save_name)
-    #         for test_attack_id in [0, 1, 6]:
-    #             save_name = os.path.join(state_dir, str(i) + '_' + str(test_attack_id) + '.m')
-    #             [_, (test_feature, test_label)] = torch.load(save_name)
-    #             test_pred = m.predict(test_feature)
-    #             acc = sum(test_pred == test_label) / len(test_label)
-    #             print(i, train_attack_id, test_attack_id, acc)
-    #
