@@ -7,7 +7,7 @@ device = torch.device('cuda')
 
 MAX_PER = 3
 MAX_LEN = 300
-
+os.environ["HF_HOME"] = os.environ.get("HF_HOME", "./workdir/huggingface/")
 if not os.path.isdir('senstive'):
     os.mkdir('senstive')
 
@@ -24,7 +24,7 @@ def dump_model_info():
                                                  'num_beam_groups', model.config.num_beam_groups,
         )
 
-
+@torch.no_grad()
 def translate_config(model, tokenizer, adv_res, beam, group):
     res = []
     for i, adv_his in tqdm(enumerate(adv_res)):
@@ -53,7 +53,7 @@ def main(model_id, attack_id):
 
     final_res = {'beam': []}
     for beam in [1, 2, 3, 4, 5]:
-        adv_res = torch.load('adv/' + task_name + '_' + str(beam) + '.adv')
+        adv_res = torch.load('effect/' + task_name + '_' + str(beam) + '.adv')
         group = model.config.num_beam_groups
         res = translate_config(model, tokenizer, adv_res, beam, group)
         final_res['beam'].append(res)
