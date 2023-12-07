@@ -3,11 +3,13 @@ from typing import *
 import torch
 import inspect
 
-from transformers.generation_utils import BeamSearchScorer
+from transformers import BeamSearchScorer
 from transformers import LogitsProcessorList, StoppingCriteriaList
+from transformers import GenerationConfig
 
 def translate(
         module,
+        generation_config: Optional[GenerationConfig] = None,
         inputs: Optional[torch.Tensor] = None,
         max_length: Optional[int] = None,
         min_length: Optional[int] = None,
@@ -57,7 +59,8 @@ def translate(
 
     pad_token_id = pad_token_id if pad_token_id is not None else module.config.pad_token_id
     eos_token_id = eos_token_id if eos_token_id is not None else module.config.eos_token_id
-
+    # generation_config = generation_config if generation_config is not None else module.generation_config
+    generation_config = module.generation_config
     # output_scores = output_scores if output_scores is not None else module.config.output_scores
     output_scores = True
     output_attentions = output_attentions if output_attentions is not None else module.config.output_attentions
@@ -152,30 +155,65 @@ def translate(
         )
 
     # 7. prepare distribution pre_processing samplers
+    input_ids_length = input_ids.shape[-1]
+    generation_config.repetition_penalty=repetition_penalty
+    # generation_config.no_repeat_ngram_size=no_repeat_ngram_size
+    generation_config.early_stopping=early_stopping
+    generation_config.temperature=temperature
+    generation_config.no_repeat_ngram_size=no_repeat_ngram_size
+    generation_config.encoder_no_repeat_ngram_size=encoder_no_repeat_ngram_size
+    generation_config.bad_words_ids=bad_words_ids
+    generation_config.min_length=min_length
+    generation_config.max_length=max_length
+    generation_config.eos_token_id=eos_token_id
+    generation_config.forced_bos_token_id=forced_bos_token_id
+    generation_config.forced_eos_token_id=forced_eos_token_id
+    generation_config.num_beams=num_beams
+    generation_config.num_beam_groups=num_beam_groups
+    generation_config.diversity_penalty=diversity_penalty
+    generation_config.remove_invalid_values=remove_invalid_values
+    generation_config.repetition_penalty=repetition_penalty
+    generation_config.length_penalty=length_penalty
+    generation_config.output_scores=output_scores
+    generation_config.return_dict_in_generate=return_dict_in_generate
+
+
     logits_processor = module._get_logits_processor(
-        repetition_penalty=repetition_penalty,
-        no_repeat_ngram_size=no_repeat_ngram_size,
-        encoder_no_repeat_ngram_size=encoder_no_repeat_ngram_size,
+        generation_config=generation_config,
+        input_ids_seq_length = input_ids_length,
         encoder_input_ids=inputs_tensor,
-        bad_words_ids=bad_words_ids,
-        min_length=min_length,
-        max_length=max_length,
-        eos_token_id=eos_token_id,
-        forced_bos_token_id=forced_bos_token_id,
-        forced_eos_token_id=forced_eos_token_id,
         prefix_allowed_tokens_fn=prefix_allowed_tokens_fn,
-        num_beams=num_beams,
-        num_beam_groups=num_beam_groups,
-        diversity_penalty=diversity_penalty,
-        remove_invalid_values=remove_invalid_values,
         logits_processor=logits_processor,
     )
 
-    # 8. prepare stopping criteria
-    stopping_criteria = module._get_stopping_criteria(
-        max_length=max_length, max_time=max_time, stopping_criteria=stopping_criteria
-    )
+    # logits_processor = module._get_logits_processor(
+        # #generation_config=generation_config,
+        # # input_ids_seq_length = input_ids_seq_length,
+        # repetition_penalty=repetition_penalty,
+        # no_repeat_ngram_size=no_repeat_ngram_size,
+        # encoder_no_repeat_ngram_size=encoder_no_repeat_ngram_size,
+        # encoder_input_ids=inputs_tensor,
+        # bad_words_ids=bad_words_ids,
+        # min_length=min_length,
+        # max_length=max_length,
+        # eos_token_id=eos_token_id,
+        # forced_bos_token_id=forced_bos_token_id,
+        # forced_eos_token_id=forced_eos_token_id,
+        # prefix_allowed_tokens_fn=prefix_allowed_tokens_fn,
+        # num_beams=num_beams,
+        # num_beam_groups=num_beam_groups,
+        # diversity_penalty=diversity_penalty,
+        # remove_invalid_values=remove_invalid_values,
+        # logits_processor=logits_processor,
+    # )
 
+    # 8. prepare stopping criteria
+    # stopping_criteria = module._get_stopping_criteria(
+    #     max_length=max_length, max_time=max_time, stopping_criteria=stopping_criteria
+    # )
+    stopping_criteria = module._get_stopping_criteria(
+        generation_config=generation_config, stopping_criteria=stopping_criteria
+    )
     # 9. go into different generation modes
     if is_greedy_gen_mode:
         if num_return_sequences > 1:
@@ -282,7 +320,7 @@ def translate(
             is_encoder_decoder=module.config.is_encoder_decoder,
             **model_kwargs,
         )
-
+ 
         # 13. run beam sample
         return module.beam_sample(
             input_ids,
