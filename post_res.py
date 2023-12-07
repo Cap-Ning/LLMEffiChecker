@@ -38,6 +38,7 @@ for attack_name in ['C', 'W']:
             data_res = np.concatenate([I_flops_avg, I_flops_max, I_cpu_avg, I_cpu_max, I_gpu_avg, I_gpu_max], axis=1)
             final_table.append(data_res)
 
+            
             flops = np.concatenate(flops)
             cpu = np.concatenate(cpu)
             gpu = np.concatenate(gpu)
