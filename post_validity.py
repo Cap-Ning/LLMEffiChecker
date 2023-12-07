@@ -13,6 +13,7 @@ MAX_PER = 3
 device = torch.device(7)
 
 
+
 def main():
     var_dict = torch.load("preliminary/MultiUN.var")
     var_res = var_dict['de-en']
