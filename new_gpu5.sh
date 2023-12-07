@@ -10,4 +10,4 @@
 
 
 
-CUDA_VISIBLE_DEVICES=5 python measure_senstive.py --data=1 --attack=1
+CUDA_VISIBLE_DEVICES=5 python measure_senstive.py --data=1 --attack=7
