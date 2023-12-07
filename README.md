@@ -37,7 +37,8 @@ We recommend to use ``conda`` to manage the python libraries and the requirement
 We provide the bash script that generate adversarial examples and measure the efficiency in **gpu0.sh**. **gpu1.sh**, **gpu2.sh**,**gpu3.sh**, **gpu4.sh**. **gpu5.sh**, **gpu6.sh**, are implementing the similar functionality but for different gpus. 
 
 So just run `bash gpu0.sh`.
- 
+
+Noted that in white-box settings, you need to set model.generate() in native transformers to be able to return gradients.
  
 ## Generated Test Samples.
 
