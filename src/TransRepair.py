@@ -1,17 +1,17 @@
 import time
-
+import difflib
 import nltk
 import numpy as np
 import subprocess
 from nltk.tokenize.treebank import TreebankWordTokenizer, TreebankWordDetokenizer
-
+import os
 
 from .base_attack import SEAttack
 
-
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 def load_sim_dict():
     # load the similar word dictionary
-    SIM_DICT_FILE = "/home/sxc180080/data/Project/TransAbuse/src/similarity_dict.txt"
+    SIM_DICT_FILE = "/home/simin/Project/NMT/FSE22_NMTSloth/src/similarity.txt"
     sim_dict = {}
     with open(SIM_DICT_FILE, 'r') as f:
         lines = f.readlines()
@@ -73,6 +73,9 @@ class TransRepairAttack(SEAttack):
 
         return similarity
 
+    
+
+
     def wordDiffSet(self, sentence1, sentence2):
         file1 = "temptest1.txt"
         file2 = "temptest2.txt"
@@ -86,10 +89,9 @@ class TransRepairAttack(SEAttack):
         with open(file2, 'w') as f:
             f.write(sentence2)
 
-        p = subprocess.run(["/home/sxc180080/bin/wdiff", file1, file2], stdout=subprocess.PIPE)
+        p = subprocess.run(["/home/simin/Project/NMT/FSE22_NMTSloth/tools/wdiff_bin/bin/wdiff", file1, file2], stdout=subprocess.PIPE)
         wdstr = p.stdout.decode("utf-8")
-
-        # print (wdstr)
+        print (wdstr)
 
         idxL1 = []
         idxL2 = []
@@ -200,6 +202,7 @@ class TransRepairAttack(SEAttack):
 
         new_sentsL = self.generate_sentences(origin_source_sent[0])
         if len(new_sentsL) == 0:
+            print('new_sentsL==0')
             return False, adv_his
 
         new_target_sent_sL, new_target_lensL = self.get_trans_strings(new_sentsL)
@@ -222,4 +225,5 @@ class TransRepairAttack(SEAttack):
                 adv_his.append((new_source, int(new_len), t2 - t1))
             if count == self.max_per:
                 break
+        print('ok')
         return True, adv_his
