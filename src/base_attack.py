@@ -19,9 +19,9 @@ from transformers import (
 )
 torch.autograd.set_detect_anomaly(True)
 
-# HUMANEVAL_EOS = ["\nclass", "\ndef", "\n#", "\n@", "\nprint", "\nif"]
+# MBPP_EOS = ["\nclass", "\ndef", "\n#", "\n@", "\nprint", "\nif"]
 # NON_CODE_EOS = ["<|endoftext|>", "\n```", "\n</s>", "<|endofmask|>"]
-# EOS = HUMANEVAL_EOS + NON_CODE_EOS
+# EOS = MBPP_EOS + NON_CODE_EOS
 # # Adopted from https://github.com/huggingface/transformers/pull/14897
 # class EndOfFunctionCriteria(StoppingCriteria):
 #     def __init__(self, start_length, eos, tokenizer, *args, **kwargs):
@@ -119,62 +119,30 @@ class BaseAttack:
                 if tk == self.eos_token_id and i != 0:
                     return s[:i + 1]
             return s
-        #分词，加了个<eos>
         input_token = self.tokenizer(text, return_tensors="pt", padding=True).input_ids
         input_token = input_token.to(self.device)
-        # out_token = translate(
-        #     self.model, input_token,
-        #     early_stopping=False, num_beams=self.num_beams,
-        #     num_beam_groups=self.num_beam_groups, use_cache=True,
-        #     max_length=self.max_len
-        # )
-        # out_token = translate(
-        #     self.model, input_token,
-        #     early_stopping=False, num_beams=self.num_beams,
-        #     num_beam_groups=self.num_beam_groups, use_cache=True,
-        #     no_repeat_ngram_size=2,length_penalty=-1,
-        #     repetition_penalty=2.0,
-        #     max_length=self.max_len
-        # )
-        # generate_with_grad = undecorated(self.model.generate)
-        # self.model.generate_with_grad = MethodType(generate_with_grad, self.model)
-        # out_token = mygenerate(
-        #     self.model,
-        #     inputs=input_token,
-        #     # temperature=0.0,
-        #     # do_sample=True,
-        #     output_scores=True,
-        #     return_dict_in_generate=True,
-        # )
-
-        # scores = StoppingCriteriaList(
-        #     [
-        #         EndOfFunctionCriteria(
-        #             start_length=len(input_token[0]),
-        #             eos=EOS,
-        #             tokenizer=self.tokenizer,
-        #         )
-        #     ]
-        # )
+        scores = StoppingCriteriaList(
+            [
+                EndOfFunctionCriteria(
+                    start_length=len(input_token[0]),
+                    eos=EOS,
+                    tokenizer=self.tokenizer,
+                )
+            ]
+        )
         out_token = self.model.generate(
             input_ids=input_token,
             # early_stopping=True,
             # use_cache=True,
             num_beams=self.num_beams,
             num_beam_groups=self.num_beam_groups,
-            # temperature=0.0,
-            # # no_repeat_ngram_size=2,
-            # # repetition_penalty=2.0,
             max_length=self.max_len,
             # stopping_criteria=scores,
-            # # do_sample=True,
-            # length_penalty=-1,
             output_scores=True, return_dict_in_generate=True,
         )
         seqs = out_token['sequences']
         seqs = [remove_pad(seq) for seq in seqs]
         out_scores = out_token['scores']
-        # 此时存在问题，gpt2，llama这些模型会保留原有的句子，所以导致pred_len与out_scors不一致
         # if(len(input_token[0]) + len(out_scores) == len(seqs[0])):
         #     seqs[0] = seqs[0][len(input_token[0]):]
         seqs[0] = seqs[0][-len(out_scores):]
@@ -288,22 +256,22 @@ class MyAttack(BaseAttack):
             st, ed = i * batch_size, min(i * batch_size + batch_size, len(new_strings))
             input_token = self.tokenizer(new_strings[st:ed], return_tensors="pt", padding=True).input_ids
             input_token = input_token.to(self.device)
-            # trans_res = translate(
-            #     self.model, input_token,
-            #     early_stopping=False, num_beams=self.num_beams,
-            #     num_beam_groups=self.num_beam_groups, use_cache=True,
-            #     max_length=self.max_len
-            # )
 
+            scores = StoppingCriteriaList(
+                [
+                    EndOfFunctionCriteria(
+                        start_length=len(input_token[0]),
+                        eos=EOS,
+                        tokenizer=self.tokenizer,
+                    )
+                ]
+            )
             trans_res = self.model.generate(
                 input_token,
-                # early_stopping=True, 
-                # use_cache=True,
+
                 num_beams=self.num_beams,
                 num_beam_groups=self.num_beam_groups,
-                # temperature=0.0,
-                # no_repeat_ngram_size=2, 
-                # repetition_penalty=2.0,
+                #stopping_criteria=scores,
                 max_length=self.max_len,
                 # num_return_sequences=30,
                 # do_sample=True,
