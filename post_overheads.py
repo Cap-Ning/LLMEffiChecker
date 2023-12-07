@@ -14,7 +14,7 @@ for task_id in range(4):
     model_name = MODEL_NAME_LIST[task_id]
     overheads_res = []
     beam_size = BEAM_LIST[task_id]
-    for attack_id in [0, 1, 6]:
+    for attack_id in [0, 1, 6, 7, 8, 9]:
         task_name = 'attack_type:' + str(attack_id) + '_model_type:' + str(task_id) + '_' + str(beam_size)
         adv_file = os.path.join(adv_dir, task_name + '.adv')
         adv_res = torch.load(adv_file)
