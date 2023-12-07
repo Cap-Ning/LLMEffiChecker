@@ -17,3 +17,4 @@ for file_name in os.listdir('adv'):
         c += 1
         if c == 10:
             break
+            
