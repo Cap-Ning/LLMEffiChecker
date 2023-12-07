@@ -16,4 +16,4 @@
 
 # CUDA_VISIBLE_DEVICES=6 python measure_senstive.py --data=2 --attack=6
 
-CUDA_VISIBLE_DEVICES=6 python measure_latency.py --data=2 --attack=6
+CUDA_VISIBLE_DEVICES=6 python measure_latency.py --data=2 --attack=7
