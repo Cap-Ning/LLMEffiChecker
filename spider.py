@@ -8,11 +8,11 @@ import numpy as np
 import json
 import torch
 
-PAGE_NUM = 49
+PAGE_NUM = 1147
 MODEL_PER_PAGE = 30
 
 final_dict = []
-root_url = 'https://huggingface.co/models?pipeline_tag=translation&sort=downloads'
+root_url = 'https://huggingface.co/models?pipeline_tag=text-generation&sort=downloads'
 
 
 def parse_config(config):
@@ -32,7 +32,7 @@ def parse_config(config):
 def main():
     final_list = []
     cnt = 0
-    f = open('config.csv', 'w')
+    f = open('new_llmconfig.csv', 'w')
     fwriter = csv.writer(f)
     for i in range(PAGE_NUM):
         if i == 0:
@@ -54,17 +54,24 @@ def main():
         base_url ='https://huggingface.co/'
 
         for model_name in tqdm(model_url_list):
+            final_list = []
             url = base_url + model_name
             res = requests.get(url)
             download_xpath = '/html/body/div/main/div/section[2]/div[1]/dl/dd'
             model_html = etree.HTML(res.content)
             download_num = model_html.xpath(download_xpath)
-            download_num = int(download_num[0].text.replace(',', ''))
+            try:
+                download_num = int(download_num[0].text.replace(',', ''))
+            except:
+                continue
             url = base_url + model_name + '/resolve/main/config.json'
             res = requests.get(url)
             if res.status_code == 404:
                 continue
-            config = json.loads(res.text)
+            try:
+                config = json.loads(res.text)
+            except:
+                continue
             res = parse_config(config)
             if 'max_length' not in res:
                 res['max_length'] = 'None'
@@ -103,4 +110,4 @@ def post():
     f.close()
 
 if __name__ == '__main__':
-    post()
+    main()
