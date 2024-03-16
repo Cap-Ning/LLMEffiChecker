@@ -65,5 +65,3 @@ LLMEffiChecker(S)
 ['A woman is reading a newspaper nearby while he speaks to her and shows her something in his hand. The man sharpens his knives using an electric tool. he', 'A woman is reading a newspaper nearby while he speaks to her and shows her something in his hand. The man sharpens his knives using an electric wire. he']
 ['A man is outside of a building. He is using commercial lawn mowing equipment. he', 'A man is outside of a building. He contin using commercial lawn mowing equipment. he']
 ['A man in brown jacket is pulling out an arrow from the target board, then he was talking to the camera, then he pull out his bow and started to use it with his bow to hit the target board, he fired his bows several times. the man', 'A man in brown jacket is pulling out an arrow from the target board, then he was talking to the camera, then he pull out his bow and started to use it with his bow to hit the target board, he fired his bows several times. the night']
-
-
