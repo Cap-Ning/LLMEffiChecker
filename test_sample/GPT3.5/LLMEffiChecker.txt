@@ -1,4 +1,4 @@
-LLMEffiChecker(C)
+LLMEffiChecker-B(C)
 ['A boy is running down a track. the boy', 'A boy is running down a track. thNe boy']
 ['The boy lifts his body above the height of a pole. The boy lands on his back on to a red mat. the boy', 'The bCoy lifts his body above the height of a pole. The boy lands on his back on to a red mat. the boy']
 ['The boy lands on his back on to a red mat. The boy gets up from the mat. the boy', 'The boy lands on his babck on to a red mat. The boy gets up from the mat. the boy']
@@ -21,7 +21,7 @@ LLMEffiChecker(C)
 ['Children bring desert out for their family member. the family', 'Children bring desert out for their family member.. the family']
 
 
-LLMEffiChecker(T)
+LLMEffiChecker-B(T)
 ['A boy is running down a track. the boy', ' unarmed boy is running down a track. the boy']
 ['The boy lifts his body above the height of a pole. The boy lands on his back on to a red mat. the boy', 'The Crush lifts his body above the height of a pole. The boy lands on his back on to a red mat. the boy']
 ['The boy lands on his back on to a red mat. The boy gets up from the mat. the boy', 'The boy lands on his back on to a red mat. The boy gets up from the mat mythical the boy']
@@ -44,7 +44,7 @@ LLMEffiChecker(T)
 ['Children bring desert out for their family member. the family', 'Children bring desert out for their family member. the phases']
 
 
-LLMEffiChecker(S)
+LLMEffiChecker-B(S)
 ['A boy is running down a track. the boy', 'A boy is standing down a track. the boy']
 ['The boy lifts his body above the height of a pole. The boy lands on his back on to a red mat. the boy', 'The gravity lifts his body above the height of a pole. The boy lands on his back on to a red mat. the boy']
 ['The boy lands on his back on to a red mat. The boy gets up from the mat. the boy', 'The something lands on his back on to a red mat. The boy gets up from the mat. the boy']
